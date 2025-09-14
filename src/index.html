@@ -1,0 +1,32 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <script src="js/script.js"></script>
+</head>
+<body>
+  <h2>📋 Tasks</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Done</th>
+        <th>Task</th>
+        <th>Category</th>
+        <th>Due Date</th>
+        <th>Info</th>
+      </tr>
+    </thead>
+    <tbody id="taskTableBody">
+    </tbody>
+  </table>
+
+  <h3>➕ Add Task</h3>
+  <input type="text" id="taskInput" placeholder="Task">
+  <input type="date" id="dueDateInput">
+  <input type="text" id="categoryInput" placeholder="Category">
+  <label><input type="checkbox" id="hotInput"> Hot</label><br>
+  <input type="text" id="infoInput" placeholder="Info">
+  <button onclick="addTaskFromForm()">Add Task</button>
+</body>
+</html>
