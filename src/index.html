@@ -1,32 +1,178 @@
-
+<!-- index.html -->
 <!DOCTYPE html>
 <html>
 <head>
   <base target="_top">
-  <script src="js/script.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f4f6f9;
+    }
+    .container {
+      display: flex;
+      height: 100vh;
+    }
+    .sidebar {
+      background-color: #2f4f72;
+      color: white;
+      width: 250px;
+      padding: 20px;
+    }
+    .sidebar h2 {
+      font-size: 20px;
+      margin-top: 0;
+    }
+    .sidebar ul {
+      list-style: none;
+      padding: 0;
+    }
+    .sidebar li {
+      margin: 10px 0;
+      cursor: pointer;
+    }
+    .sidebar li:hover {
+      text-decoration: underline;
+    }
+    .main {
+      flex: 1;
+      padding: 20px;
+      background-color: #ffffff;
+    }
+    .main h2 {
+      margin-top: 0;
+      color: #2f4f72;
+    }
+    .task-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .task-table th, .task-table td {
+      border-bottom: 1px solid #ddd;
+      padding: 10px;
+      text-align: left;
+    }
+    .task-table th {
+      background-color: #e1e8f0;
+    }
+    .task-row:hover {
+      background-color: #f2f7fc;
+    }
+    .add-task {
+      margin-top: 20px;
+      padding: 10px;
+      background-color: #f9f9f9;
+      border: 1px solid #ccc;
+    }
+    .add-task input, .add-task select {
+      padding: 6px;
+      margin: 4px 8px 4px 0;
+    }
+    .add-task button {
+      background-color: #2f4f72;
+      color: white;
+      padding: 6px 12px;
+      border: none;
+      cursor: pointer;
+    }
+    .add-task button:hover {
+      background-color: #3b5e89;
+    }
+  </style>
+  <script>
+    function loadTasks() {
+      google.script.run.withSuccessHandler(renderTasks).getTasks();
+    }
+
+    function renderTasks(tasks) {
+      const tbody = document.querySelector(".task-table tbody");
+      tbody.innerHTML = "";
+      tasks.forEach(task => {
+        const row = document.createElement("tr");
+        row.classList.add("task-row");
+        row.innerHTML = `
+          <td><input type="checkbox" ${task.done ? "checked" : ""}></td>
+          <td>${task.name}</td>
+          <td>${task.category}</td>
+          <td>${task.dueDate}</td>
+          <td>${task.info}</td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+
+    function addTask() {
+      const inputs = document.querySelectorAll(".add-task input, .add-task select");
+      const task = {
+        name: inputs[0].value,
+        dueDate: inputs[1].value,
+        category: inputs[2].value,
+        hot: inputs[3].checked,
+        info: inputs[4].value,
+        done: false
+      };
+      google.script.run.withSuccessHandler(loadTasks).addTask(task);
+      inputs.forEach(input => {
+        if (input.type === 'checkbox') input.checked = false;
+        else input.value = '';
+      });
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+      loadTasks();
+      document.querySelector(".add-task button").addEventListener("click", addTask);
+    });
+  </script>
 </head>
 <body>
-  <h2>📋 Tasks</h2>
-  <table>
-    <thead>
-      <tr>
-        <th>Done</th>
-        <th>Task</th>
-        <th>Category</th>
-        <th>Due Date</th>
-        <th>Info</th>
-      </tr>
-    </thead>
-    <tbody id="taskTableBody">
-    </tbody>
-  </table>
+  <div class="container">
+    <div class="sidebar">
+      <h2>CATEGORIES</h2>
+      <ul>
+        <li>🔥 Hot Tasks</li>
+        <li>☑ Completed Tasks</li>
+        <li>🟢 All Tasks</li>
+        <li>▸ Morning Routine</li>
+        <li>▸ School</li>
+        <li>▸ Personal</li>
+        <li>▸ Admin</li>
+        <li>➕ Add Category</li>
+      </ul>
+    </div>
+    <div class="main">
+      <h2>📋 TASKS</h2>
+      <table class="task-table">
+        <thead>
+          <tr>
+            <th></th>
+            <th>Task</th>
+            <th>Category</th>
+            <th>Due Date</th>
+            <th>Info</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Dynamic task rows -->
+        </tbody>
+      </table>
 
-  <h3>➕ Add Task</h3>
-  <input type="text" id="taskInput" placeholder="Task">
-  <input type="date" id="dueDateInput">
-  <input type="text" id="categoryInput" placeholder="Category">
-  <label><input type="checkbox" id="hotInput"> Hot</label><br>
-  <input type="text" id="infoInput" placeholder="Info">
-  <button onclick="addTaskFromForm()">Add Task</button>
+      <div class="add-task">
+        <h3>➕ ADD NEW TASK</h3>
+        <input type="text" placeholder="Task">
+        <input type="date">
+        <select>
+          <option>School</option>
+          <option>Admin</option>
+          <option>Morning</option>
+          <option>Personal</option>
+        </select>
+        <label><input type="checkbox"> Mark as Hot?</label><br>
+        <input type="text" placeholder="Info (optional)">
+        <button>+ Add Task</button>
+      </div>
+    </div>
+  </div>
 </body>
 </html>
+

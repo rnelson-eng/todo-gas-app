@@ -1,33 +1,38 @@
-
-function loadTasks() {
-  google.script.run.withSuccessHandler(renderTasks).TASKS.getAll();
+function saveTask(task) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  sheet.appendRow([task, new Date()]);
 }
 
-function addTaskFromForm() {
-  const task = {
-    Task: document.querySelector('#taskInput').value,
-    Category: document.querySelector('#categoryInput').value,
-    DueDate: document.querySelector('#dueDateInput').value,
-    Info: document.querySelector('#infoInput').value,
-    Hot: document.querySelector('#hotInput').checked
+function getTasks() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  const data = sheet.getRange(1, 1, sheet.getLastRow(), 1).getValues();
+  return data.flat(); // Return as 1D array
+}
+
+function addTask() {
+  const task = document.getElementById("task").value.trim();
+  const dueDate = document.getElementById("due-date").value;
+  const category = document.getElementById("category-select").value;
+  const info = document.getElementById("task-info").value.trim();
+  const isHot = document.getElementById("hot-checkbox").checked;
+
+  if (!task || !category || !dueDate) {
+    alert("Please fill in all fields.");
+    return;
+  }
+
+  const newTask = {
+    name: task,
+    dueDate,
+    category,
+    info,
+    hot: isHot
   };
-  google.script.run.withSuccessHandler(loadTasks).TASKS.add(task);
-}
 
-function renderTasks(tasks) {
-  const tbody = document.querySelector('#taskTableBody');
-  tbody.innerHTML = '';
-  tasks.forEach(t => {
-    const row = document.createElement('tr');
-    row.innerHTML = `
-      <td><input type="checkbox" ${t.Status === 'Done' ? 'checked' : ''}></td>
-      <td>${t.Hot ? '⭐ ' : ''}${t.Task}</td>
-      <td>${t.Category}</td>
-      <td>${t.DueDate}</td>
-      <td>${t.Info}</td>
-    `;
-    tbody.appendChild(row);
-  });
+  google.script.run
+    .withSuccessHandler(() => {
+      loadTasks();
+      clearTaskForm();
+    })
+    .addTask(newTask); // ✅ pass actual object
 }
-
-document.addEventListener('DOMContentLoaded', loadTasks);
