@@ -23,70 +23,95 @@
     .add-task button:hover { background:#3b5e89; }
   </style>
   <script>
-    function renderTasks(tasks) {
-      const tbody = document.querySelector(".task-table tbody");
-      if (!tbody) { console.error("No .task-table tbody found."); return; }
-      tbody.innerHTML = "";
-      (tasks || []).forEach(t => {
-        const tr = document.createElement("tr");
-        const due = t.dueDate ? new Date(t.dueDate).toLocaleDateString() : "";
-        tr.innerHTML = `
-          <td><input type="checkbox" ${t.completed ? "checked" : ""}></td>
-          <td>${t.task || ""}</td>
-          <td>${t.category || ""}</td>
-          <td>${due}</td>
-          <td>${t.info || ""}</td>
-        `;
-        tbody.appendChild(tr);
-      });
-    }
+  // write a message in the UI for quick diagnosis
+  function dbg(msg) {
+    const el = document.getElementById('debug');
+    if (el) el.textContent = String(msg || '');
+  }
 
-    function loadTasks() {
-      if (!window.google || !google.script || !google.script.run) {
-        setTimeout(loadTasks, 150); return;
-      }
-      google.script.run
-        .withSuccessHandler(renderTasks)
-        .withFailureHandler(err => {
-          console.error("getTasks failed:", err);
-          alert("Could not load tasks: " + (err && err.message ? err.message : err));
-        })
-        .getTasks();
-    }
+  // render rows into the existing table
+  function renderTasks(tasks) {
+    const tbody = document.querySelector(".task-table tbody");
+    if (!tbody) { dbg("No .task-table tbody found."); return; }
 
-    function addTask() {
-      const inputs = document.querySelectorAll(".add-task input, .add-task select");
-      if (inputs.length < 5) { alert("Could not find the Add Task inputs."); return; }
-      const name     = (inputs[0]?.value || "").trim();
-      const dueDate  = (inputs[1]?.value || "");
-      const category = (inputs[2]?.value || "");
-      const hot      = !!(inputs[3]?.checked);
-      const info     = (inputs[4]?.value || "").trim();
-      if (!name) { alert("Please enter a task name."); return; }
-
-      const payload = { name, dueDate, category, info, hot };
-      google.script.run
-        .withSuccessHandler(() => {
-          inputs.forEach(el => { if (el.type === "checkbox") el.checked = false; else el.value = ""; });
-          loadTasks();
-        })
-        .withFailureHandler(err => {
-          console.error("addTask failed:", err);
-          alert("Could not add task: " + (err && err.message ? err.message : err));
-        })
-        .addTask(payload);
-    }
-
-    function wireUI() {
-      const addBtn = document.querySelector(".add-task button");
-      if (addBtn) addBtn.addEventListener("click", addTask);
-    }
-
-    document.addEventListener("DOMContentLoaded", () => {
-      wireUI();
-      loadTasks();
+    tbody.innerHTML = "";
+    (tasks || []).forEach(t => {
+      const tr = document.createElement("tr");
+      const due = t.dueDate ? new Date(t.dueDate).toLocaleDateString() : "";
+      tr.innerHTML = `
+        <td><input type="checkbox" ${t.completed ? "checked" : ""}></td>
+        <td>${t.task || ""}</td>
+        <td>${t.category || ""}</td>
+        <td>${due}</td>
+        <td>${t.info || ""}</td>
+      `;
+      tbody.appendChild(tr);
     });
-  </script>
+
+    dbg(`Loaded ${tasks.length} task(s).`);
+  }
+
+  // try to fetch from server
+  function loadTasks() {
+    if (!window.google || !google.script || !google.script.run) {
+      dbg("Bridge not ready… retrying");
+      setTimeout(loadTasks, 150);
+      return;
+    }
+    google.script.run
+      .withSuccessHandler(function (rows) {
+        if (!rows || !rows.length) dbg("Server returned 0 tasks.");
+        renderTasks(rows || []);
+      })
+      .withFailureHandler(function (err) {
+        console.error("getTasks failed:", err);
+        dbg("getTasks failed: " + (err && err.message ? err.message : err));
+        // Fallback: render a dummy row so we confirm the renderer works
+        renderTasks([{ task: "⚠ Could not load from server", category: "", dueDate: "", info: "Check Code.js:getTasks()", completed: false }]);
+      })
+      .getTasks();
+  }
+
+  function addTask() {
+    const inputs = document.querySelectorAll(".add-task input, .add-task select");
+    if (inputs.length < 5) { dbg("Add-task inputs not found."); return; }
+
+    const name     = (inputs[0]?.value || "").trim();
+    const dueDate  = (inputs[1]?.value || "");
+    const category = (inputs[2]?.value || "");
+    const hot      = !!(inputs[3]?.checked);
+    const info     = (inputs[4]?.value || "").trim();
+
+    if (!name) { alert("Please enter a task name."); return; }
+
+    const payload = { name, dueDate, category, info, hot };
+
+    google.script.run
+      .withSuccessHandler(function () {
+        inputs.forEach(el => { if (el.type === "checkbox") el.checked = false; else el.value = ""; });
+        dbg("Task added. Refreshing…");
+        loadTasks();
+      })
+      .withFailureHandler(function (err) {
+        console.error("addTask failed:", err);
+        dbg("addTask failed: " + (err && err.message ? err.message : err));
+      })
+      .addTask(payload);
+  }
+
+  function wireUI() {
+    const addBtn = document.querySelector(".add-task button");
+    if (addBtn) addBtn.addEventListener("click", addTask);
+    else dbg("Add button not found.");
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    dbg("DOM ready. Loading tasks…");
+    wireUI();
+    loadTasks();
+  });
+</script>
+
 </head>
 <body>
   <div class="container">
@@ -118,6 +143,8 @@
         </thead>
         <tbody><!-- rows injected by JS --></tbody>
       </table>
+
+      <div id="debug" style="margin:8px 0;color:#b00;font-weight:600;"></div>
 
       <div class="add-task">
         <h3>➕ ADD NEW TASK</h3>
