@@ -24,47 +24,43 @@ function include(filename) {
   return HtmlService.createHtmlOutputFromFile(filename).getContent();
 }
 
-/** Ensures the 'Tasks' sheet exists with headers and returns it. */
+/** Ensure the Tasks sheet exists and its header is correct */
 function ensureTasksSheet_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sh = ss.getSheetByName('Tasks');
-  if (!sh) {
-    sh = ss.insertSheet('Tasks');
-  }
+  if (!sh) sh = ss.insertSheet('Tasks');
+
+  const header = ['Task','Due','Category','Info','Hot','Completed','Created'];
   if (sh.getLastRow() === 0) {
-    sh.getRange(1, 1, 1, 7).setValues([[
-      'Task','Due','Category','Info','Hot','Completed','Created'
-    ]]);
+    sh.getRange(1, 1, 1, header.length).setValues([header]);
   } else {
-    // If headers are missing/corrupt, reset the header row
-    const header = sh.getRange(1, 1, 1, 7).getValues()[0];
-    const expected = ['Task','Due','Category','Info','Hot','Completed','Created'];
-    const mismatch = expected.some((h, i) => header[i] !== h);
-    if (mismatch) {
-      sh.getRange(1, 1, 1, 7).setValues([expected]);
-    }
+    const current = sh.getRange(1, 1, 1, header.length).getValues()[0];
+    const mismatch = header.some((h, i) => current[i] !== h);
+    if (mismatch) sh.getRange(1, 1, 1, header.length).setValues([header]);
   }
   return sh;
 }
-function getTasks() {
-  const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Tasks');
-  if (!sh) return [];
-  const data = sh.getDataRange().getValues();
-  if (data.length < 2) return [];
 
-  return data.slice(1).map(row => ({
-    task: row[0],         // Task
-    dueDate: row[1],      // Due
-    category: row[2],     // Category
-    info: row[3],         // Info
-    hot: row[4] === true, // Hot
-    completed: row[5] === true, // Completed
-    created: row[6]       // Created
+/** READ: map columns exactly as they are in the sheet */
+function getTasks() {
+  const sh = ensureTasksSheet_();
+  const last = sh.getLastRow();
+  if (last < 2) return [];
+  const values = sh.getRange(2, 1, last - 1, 7).getValues(); // A:G
+
+  return values.map(r => ({
+    task: r[0],                          // A: Task
+    dueDate: r[1] || '',                 // B: Due
+    category: r[2] || '',                // C: Category
+    info: r[3] || '',                    // D: Info
+    hot: r[4] === true || String(r[4]).toUpperCase() === 'TRUE',          // E: Hot
+    completed: r[5] === true || String(r[5]).toUpperCase() === 'TRUE',    // F: Completed
+    created: r[6] || ''                  // G: Created
   }));
 }
 
 
-/** Appends a new task row. Expects {name, dueDate, category, info, hot}. */
+/** WRITE: append a full row in the same column order as the header */
 function addTask(task) {
   if (!task) throw new Error('No task payload provided.');
   const name = String(task.name || '').trim();
@@ -81,10 +77,9 @@ function addTask(task) {
   sh.appendRow(row);
 
   const r = sh.getLastRow();
-  sh.getRange(r, 2).setNumberFormat('m/d/yyyy');
-  sh.getRange(r, 7).setNumberFormat('m/d/yyyy h:mm');
+  sh.getRange(r, 2).setNumberFormat('m/d/yyyy');          // Due
+  sh.getRange(r, 7).setNumberFormat('m/d/yyyy h:mm');     // Created
 }
-
 
 
 // Toggles the "completed" status of a task
