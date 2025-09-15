@@ -24,7 +24,6 @@ function include(filename) {
   return HtmlService.createHtmlOutputFromFile(filename).getContent();
 }
 
-/** Ensure the Tasks sheet exists and its header is correct */
 function ensureTasksSheet_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sh = ss.getSheetByName('Tasks');
@@ -35,32 +34,32 @@ function ensureTasksSheet_() {
     sh.getRange(1, 1, 1, header.length).setValues([header]);
   } else {
     const current = sh.getRange(1, 1, 1, header.length).getValues()[0];
-    const mismatch = header.some((h, i) => current[i] !== h);
+    const mismatch = header.some((h,i)=>current[i]!==h);
     if (mismatch) sh.getRange(1, 1, 1, header.length).setValues([header]);
   }
   return sh;
 }
 
-/** READ: map columns exactly as they are in the sheet */
+
 function getTasks() {
   const sh = ensureTasksSheet_();
   const last = sh.getLastRow();
   if (last < 2) return [];
-  const values = sh.getRange(2, 1, last - 1, 7).getValues(); // A:G
 
+  const values = sh.getRange(2, 1, last - 1, 7).getValues(); // A:G
   return values.map(r => ({
-    task: r[0],                          // A: Task
-    dueDate: r[1] || '',                 // B: Due
-    category: r[2] || '',                // C: Category
-    info: r[3] || '',                    // D: Info
-    hot: r[4] === true || String(r[4]).toUpperCase() === 'TRUE',          // E: Hot
-    completed: r[5] === true || String(r[5]).toUpperCase() === 'TRUE',    // F: Completed
-    created: r[6] || ''                  // G: Created
+    task:      r[0] || "", // A: Task
+    dueDate:   r[1] || "", // B: Due
+    category:  r[2] || "", // C: Category
+    info:      r[3] || "", // D: Info
+    hot:       r[4] === true || String(r[4]).toUpperCase() === "TRUE",       // E: Hot
+    completed: r[5] === true || String(r[5]).toUpperCase() === "TRUE",       // F: Completed
+    created:   r[6] || ""  // G: Created
   }));
 }
 
 
-/** WRITE: append a full row in the same column order as the header */
+
 function addTask(task) {
   if (!task) throw new Error('No task payload provided.');
   const name = String(task.name || '').trim();
@@ -77,9 +76,10 @@ function addTask(task) {
   sh.appendRow(row);
 
   const r = sh.getLastRow();
-  sh.getRange(r, 2).setNumberFormat('m/d/yyyy');          // Due
-  sh.getRange(r, 7).setNumberFormat('m/d/yyyy h:mm');     // Created
+  sh.getRange(r, 2).setNumberFormat('m/d/yyyy');        // Due
+  sh.getRange(r, 7).setNumberFormat('m/d/yyyy h:mm');   // Created
 }
+
 
 
 // Toggles the "completed" status of a task
