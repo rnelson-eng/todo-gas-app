@@ -4,124 +4,87 @@
 <head>
   <base target="_top">
   <style>
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      margin: 0;
-      padding: 0;
-      background-color: #f4f6f9;
-    }
-    .container {
-      display: flex;
-      height: 100vh;
-    }
-    .sidebar {
-      background-color: #2f4f72;
-      color: white;
-      width: 250px;
-      padding: 20px;
-    }
-    .sidebar h2 {
-      font-size: 20px;
-      margin-top: 0;
-    }
-    .sidebar ul {
-      list-style: none;
-      padding: 0;
-    }
-    .sidebar li {
-      margin: 10px 0;
-      cursor: pointer;
-    }
-    .sidebar li:hover {
-      text-decoration: underline;
-    }
-    .main {
-      flex: 1;
-      padding: 20px;
-      background-color: #ffffff;
-    }
-    .main h2 {
-      margin-top: 0;
-      color: #2f4f72;
-    }
-    .task-table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-    .task-table th, .task-table td {
-      border-bottom: 1px solid #ddd;
-      padding: 10px;
-      text-align: left;
-    }
-    .task-table th {
-      background-color: #e1e8f0;
-    }
-    .task-row:hover {
-      background-color: #f2f7fc;
-    }
-    .add-task {
-      margin-top: 20px;
-      padding: 10px;
-      background-color: #f9f9f9;
-      border: 1px solid #ccc;
-    }
-    .add-task input, .add-task select {
-      padding: 6px;
-      margin: 4px 8px 4px 0;
-    }
-    .add-task button {
-      background-color: #2f4f72;
-      color: white;
-      padding: 6px 12px;
-      border: none;
-      cursor: pointer;
-    }
-    .add-task button:hover {
-      background-color: #3b5e89;
-    }
+    body { font-family:'Segoe UI',sans-serif; margin:0; padding:0; background:#f4f6f9; }
+    .container { display:flex; height:100vh; }
+    .sidebar { background:#2f4f72; color:#fff; width:250px; padding:20px; }
+    .sidebar h2 { font-size:20px; margin-top:0; }
+    .sidebar ul { list-style:none; padding:0; }
+    .sidebar li { margin:10px 0; cursor:pointer; }
+    .sidebar li:hover { text-decoration:underline; }
+    .main { flex:1; padding:20px; background:#fff; }
+    .main h2 { margin-top:0; color:#2f4f72; }
+    .task-table { width:100%; border-collapse:collapse; }
+    .task-table th,.task-table td { border-bottom:1px solid #ddd; padding:10px; text-align:left; }
+    .task-table th { background:#e1e8f0; }
+    .task-row:hover { background:#f2f7fc; }
+    .add-task { margin-top:20px; padding:10px; background:#f9f9f9; border:1px solid #ccc; }
+    .add-task input,.add-task select { padding:6px; margin:4px 8px 4px 0; }
+    .add-task button { background:#2f4f72; color:#fff; padding:6px 12px; border:none; cursor:pointer; }
+    .add-task button:hover { background:#3b5e89; }
   </style>
   <script>
-    function loadTasks() {
-      google.script.run.withSuccessHandler(renderTasks).getTasks();
-    }
-
     function renderTasks(tasks) {
       const tbody = document.querySelector(".task-table tbody");
+      if (!tbody) { console.error("No .task-table tbody found."); return; }
       tbody.innerHTML = "";
-      tasks.forEach(task => {
-        const row = document.createElement("tr");
-        row.classList.add("task-row");
-        row.innerHTML = `
-          <td><input type="checkbox" ${task.done ? "checked" : ""}></td>
-          <td>${task.name}</td>
-          <td>${task.category}</td>
-          <td>${task.dueDate}</td>
-          <td>${task.info}</td>
+      (tasks || []).forEach(t => {
+        const tr = document.createElement("tr");
+        const due = t.dueDate ? new Date(t.dueDate).toLocaleDateString() : "";
+        tr.innerHTML = `
+          <td><input type="checkbox" ${t.completed ? "checked" : ""}></td>
+          <td>${t.task || ""}</td>
+          <td>${t.category || ""}</td>
+          <td>${due}</td>
+          <td>${t.info || ""}</td>
         `;
-        tbody.appendChild(row);
+        tbody.appendChild(tr);
       });
+    }
+
+    function loadTasks() {
+      if (!window.google || !google.script || !google.script.run) {
+        setTimeout(loadTasks, 150); return;
+      }
+      google.script.run
+        .withSuccessHandler(renderTasks)
+        .withFailureHandler(err => {
+          console.error("getTasks failed:", err);
+          alert("Could not load tasks: " + (err && err.message ? err.message : err));
+        })
+        .getTasks();
     }
 
     function addTask() {
       const inputs = document.querySelectorAll(".add-task input, .add-task select");
-      const task = {
-        name: inputs[0].value,
-        dueDate: inputs[1].value,
-        category: inputs[2].value,
-        hot: inputs[3].checked,
-        info: inputs[4].value,
-        done: false
-      };
-      google.script.run.withSuccessHandler(loadTasks).addTask(task);
-      inputs.forEach(input => {
-        if (input.type === 'checkbox') input.checked = false;
-        else input.value = '';
-      });
+      if (inputs.length < 5) { alert("Could not find the Add Task inputs."); return; }
+      const name     = (inputs[0]?.value || "").trim();
+      const dueDate  = (inputs[1]?.value || "");
+      const category = (inputs[2]?.value || "");
+      const hot      = !!(inputs[3]?.checked);
+      const info     = (inputs[4]?.value || "").trim();
+      if (!name) { alert("Please enter a task name."); return; }
+
+      const payload = { name, dueDate, category, info, hot };
+      google.script.run
+        .withSuccessHandler(() => {
+          inputs.forEach(el => { if (el.type === "checkbox") el.checked = false; else el.value = ""; });
+          loadTasks();
+        })
+        .withFailureHandler(err => {
+          console.error("addTask failed:", err);
+          alert("Could not add task: " + (err && err.message ? err.message : err));
+        })
+        .addTask(payload);
     }
 
-    document.addEventListener("DOMContentLoaded", function () {
+    function wireUI() {
+      const addBtn = document.querySelector(".add-task button");
+      if (addBtn) addBtn.addEventListener("click", addTask);
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      wireUI();
       loadTasks();
-      document.querySelector(".add-task button").addEventListener("click", addTask);
     });
   </script>
 </head>
@@ -140,6 +103,7 @@
         <li>➕ Add Category</li>
       </ul>
     </div>
+
     <div class="main">
       <h2>📋 TASKS</h2>
       <table class="task-table">
@@ -152,9 +116,7 @@
             <th>Info</th>
           </tr>
         </thead>
-        <tbody>
-          <!-- Dynamic task rows -->
-        </tbody>
+        <tbody><!-- rows injected by JS --></tbody>
       </table>
 
       <div class="add-task">
@@ -169,10 +131,9 @@
         </select>
         <label><input type="checkbox"> Mark as Hot?</label><br>
         <input type="text" placeholder="Info (optional)">
-        <button>+ Add Task</button>
+        <button type="button">+ Add Task</button>
       </div>
     </div>
   </div>
 </body>
 </html>
-
